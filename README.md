@@ -33,19 +33,30 @@ UI Button → ActionRouter.run(actionId)
 | Screens (home / IR / relay / settings) | `lib/screens/` |
 | Reusable widgets | `lib/widgets/` |
 
-## ⚠ CE-REL8 command format must be verified
+## Wire protocol (verified against AMX CE-Series manual)
 
-The exact CE-REL8 3rd-party control path was **not available** at build time.
-The placeholder verbs in `lib/ce/ce_rel8_client.dart` follow the documented
-`exec /…` convention:
+TCP port **44197**, raw ASCII socket, messages delimited by `\n`. Paths use
+1-based port numbers.
 
-```dart
-String _closeCommand(int relay) => 'exec /relay/$relay/close';
-String _openCommand(int relay)  => 'exec /relay/$relay/open';
+**CE-IRS4 (IR)** — `exec` commands:
+
+```
+exec /ir/3/bufferedSendNamedIr "PLAY"   # named IR
+exec /ir/3/bufferedSendIr 1             # IR by index
+exec /ir/3/loadIrFile "samsung01.irl"   # load .irl
 ```
 
-Confirm the real verbs in the **CE-REL8 section of the AMX CE-Series manual** and
-edit **only those two builders**. All relay wire strings are isolated there.
+**CE-REL8 (relay)** — single boolean parameter `/relay/#/state`, set with the
+`set` message (not `exec`):
+
+```
+set /relay/1/state true    # ON  / close (engaged)
+set /relay/1/state false   # OFF / open
+```
+
+The protocol has no native relay pulse, so momentary mode is done in software
+(set true → wait → set false). All relay wire strings are isolated to
+`_closeCommand` / `_openCommand` in `lib/ce/ce_rel8_client.dart`.
 
 ## Relay channel map (CE-REL8) — sequential power (순차전원)
 

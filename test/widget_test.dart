@@ -4,6 +4,7 @@ import 'package:amx_ce_control/actions/action_ids.dart';
 import 'package:amx_ce_control/actions/action_models.dart';
 import 'package:amx_ce_control/actions/action_registry.dart';
 import 'package:amx_ce_control/ce/ce_irs4_client.dart';
+import 'package:amx_ce_control/ce/ce_rel8_client.dart';
 import 'package:amx_ce_control/ce/ce_tcp_client.dart';
 import 'package:amx_ce_control/config/app_config.dart';
 import 'package:amx_ce_control/models/command_result.dart';
@@ -63,6 +64,26 @@ void main() {
     await client.sendNamedIr(1, 'POWER_ON');
 
     expect(fake.sent.single, 'exec /ir/1/bufferedSendNamedIr "POWER_ON"');
+  });
+
+  test('CE-REL8 builds set /relay/#/state commands', () async {
+    final fake = _FakeTcpClient();
+    final client = CeRel8Client(
+      fake,
+      () => const CeConnection(
+        host: '10.0.0.2',
+        port: 44197,
+        timeout: Duration(seconds: 2),
+      ),
+    );
+
+    await client.relayClose(2);
+    await client.relayOpen(2);
+
+    expect(fake.sent, [
+      'set /relay/2/state true',
+      'set /relay/2/state false',
+    ]);
   });
 
   test('risky actions require confirmation', () {

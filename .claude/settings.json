@@ -19,7 +19,13 @@
       "PowerShell(git add -A 2>&1)",
       "PowerShell(git remote add origin https://github.com/suhyeonppark/Integrated-Controller-by-Android.git 2>&1)",
       "PowerShell(git add -A)",
-      "PowerShell(git push 2>&1)"
+      "PowerShell(git push 2>&1)",
+      "WebFetch(domain:www.amx.com)",
+      "PowerShell($tools = @\\('python','python3','py','pdftotext','pdftoppm'\\); foreach\\($t in $tools\\){ $c=\\(Get-Command $t -ErrorAction SilentlyContinue\\).Source; Write-Output \"$t = $c\" })",
+      "PowerShell(python -c \"import pypdf; print\\('pypdf', pypdf.__version__\\)\" 2>&1)",
+      "PowerShell(python -c \"import fitz; print\\('pymupdf ok'\\)\" 2>&1)",
+      "PowerShell(python -c \"import pdfplumber; print\\('pdfplumber ok'\\)\" 2>&1)",
+      "PowerShell(python \"C:\\\\dev\\\\Integrated Controller by Android\\\\extract_pdf.py\")"
     ]
   }
 }

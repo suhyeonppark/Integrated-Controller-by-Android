@@ -6,16 +6,16 @@ import 'ce_tcp_client.dart';
 ///
 /// This is the ONLY place CE-REL8 wire strings are constructed.
 ///
-/// ┌──────────────────────────────────────────────────────────────────────┐
-/// │ ⚠ COMMAND PATH MUST BE VERIFIED AGAINST THE AMX CE-Series MANUAL.      │
-/// │                                                                        │
-/// │ The exact 3rd-party control path for the CE-REL8 was not available at  │
-/// │ build time. The strings below follow the same `exec /…` convention as  │
-/// │ the documented CE-IRS4 IR commands and are intentionally isolated here │
-/// │ so that fixing the format is a one-file change. Confirm the real       │
-/// │ relay close/open verbs in the CE-REL8 section of the manual and update │
-/// │ ONLY the two builders [_closeCommand] / [_openCommand] below.          │
-/// └──────────────────────────────────────────────────────────────────────┘
+/// Verified against the AMX CE-Series Instruction Manual (3rd-Party Control
+/// Protocol → CE-REL8 Controls): the relay has a single read/write boolean
+/// parameter `/relay/#/state` (# is the 1-based relay number). Unlike IR
+/// commands (which use `exec`), relay state is set with the `set` message:
+///
+///   ON  / close (engaged):  `set /relay/1/state true`
+///   OFF / open:             `set /relay/1/state false`
+///
+/// The protocol has no native momentary/pulse for relays, so [relayMomentary]
+/// implements it in software (set true → wait → set false).
 class CeRel8Client {
   CeRel8Client(this._tcp, this._connection);
 
@@ -25,10 +25,13 @@ class CeRel8Client {
   /// How many times to retry a failed momentary OPEN before giving up.
   static const int _openRetries = 2;
 
-  // --- Wire format (placeholders — verify against manual) -------------------
+  // --- Wire format (verified against CE-Series manual) ----------------------
 
-  String _closeCommand(int relay) => 'exec /relay/$relay/close';
-  String _openCommand(int relay) => 'exec /relay/$relay/open';
+  /// Close/engage (ON): relay state = true.
+  String _closeCommand(int relay) => 'set /relay/$relay/state true';
+
+  /// Open (OFF): relay state = false.
+  String _openCommand(int relay) => 'set /relay/$relay/state false';
 
   // --- Public API -----------------------------------------------------------
 
