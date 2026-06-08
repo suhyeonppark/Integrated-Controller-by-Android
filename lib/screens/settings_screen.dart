@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../app_state.dart';
 import '../config/app_config.dart';
 import '../models/device_status.dart';
+import 'button_list_screen.dart';
 
 /// Settings screen: device IP/port, timeouts, connection tests, save (spec §10.4).
 class SettingsScreen extends StatefulWidget {
@@ -101,6 +102,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: _save,
               icon: const Icon(Icons.save),
               label: const Text('설정 저장', style: TextStyle(fontSize: 18)),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.smart_button, size: 28),
+              title: const Text('버튼 편집',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              subtitle: const Text('IR/전원 버튼 추가 · 삭제 · 수정 (포트, IR 채널, 릴레이 번호)'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ButtonListScreen()),
+              ),
             ),
           ),
           const SizedBox(height: 24),

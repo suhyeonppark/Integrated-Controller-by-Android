@@ -87,8 +87,19 @@ future motorized loads (screen/lift).
 
 ## Settings (persisted via shared_preferences)
 
-CE-IRS4 IP/port, CE-REL8 IP/port, TCP timeout (default 2000 ms), button lock
-(default 1000 ms). Editable + connection test in the **설정** screen.
+- **Devices:** CE-IRS4 IP/port, CE-REL8 IP/port, TCP timeout (default 2000 ms),
+  button lock (default 1000 ms), with connection test.
+- **버튼 편집 (button editor):** add / delete / edit every IR and power button.
+  Buttons are data-driven (`ButtonConfig`, stored under `buttons_v1`), so the IR
+  and 전원 screens render whatever is configured. Editable per button:
+  - IR: label, group, **IR port (1–4)** + **IR channel (named or by index)**,
+    confirm dialog, danger color.
+  - Power (relay): label, group, **relay number (1–8)**, mode (ON-latch /
+    OFF-latch / momentary), 2-second hold, confirm/danger.
+  - "기본값 복원" restores the factory button set.
+
+Home-screen macros (system on/off, modes) are built-in (fixed in v1) and
+reference the default button ids.
 
 ## Safety & UX
 

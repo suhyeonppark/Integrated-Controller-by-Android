@@ -1,33 +1,44 @@
+// Named constructor params map to private fields, so initializing formals
+// (this._x) aren't usable here.
+// ignore_for_file: prefer_initializing_formals
 import '../ce/ce_irs4_client.dart';
 import '../models/command_result.dart';
 import 'action_models.dart';
-import 'action_registry.dart';
 import 'interlock_manager.dart';
 
 /// Central dispatcher: turns an action_id into actual device commands
 /// (spec §4, §17.4). The UI only ever calls [run] / [requiresConfirm];
 /// it never builds TCP strings.
+///
+/// Actions are resolved through [_resolve], an injected lookup so the action
+/// set can be edited at runtime (user-defined buttons + built-in macros).
 class ActionRouter {
-  ActionRouter(this._irs4, this._interlock);
+  ActionRouter({
+    required CeIrs4Client irs4,
+    required InterlockManager interlock,
+    required ActionDef? Function(String id) resolve,
+  })  : _irs4 = irs4,
+        _interlock = interlock,
+        _resolve = resolve;
 
   final CeIrs4Client _irs4;
   final InterlockManager _interlock;
+  final ActionDef? Function(String id) _resolve;
+
+  ActionDef? lookup(String actionId) => _resolve(actionId);
 
   /// Whether this action needs a confirmation dialog before running.
-  bool requiresConfirm(String actionId) =>
-      ActionRegistry.lookup(actionId)?.confirm ?? false;
+  bool requiresConfirm(String actionId) => _resolve(actionId)?.confirm ?? false;
 
   /// Custom confirmation prompt, or a sensible default.
   String confirmMessage(String actionId) {
-    final def = ActionRegistry.lookup(actionId);
+    final def = _resolve(actionId);
     return def?.confirmMessage ?? '이 동작을 실행하시겠습니까?';
   }
 
-  ActionDef? lookup(String actionId) => ActionRegistry.lookup(actionId);
-
   /// Runs an action. Never throws — always returns a [CommandResult].
   Future<CommandResult> run(String actionId) {
-    final def = ActionRegistry.lookup(actionId);
+    final def = _resolve(actionId);
     if (def == null) {
       return Future.value(
         CommandResult.fail('정의되지 않은 동작입니다: $actionId'),
