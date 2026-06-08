@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Force | Select-Object Name, Length; Write-Output \"---FLUTTER---\"; \\(Get-Command flutter -ErrorAction SilentlyContinue\\).Source; Write-Output \"---DART---\"; \\(Get-Command dart -ErrorAction SilentlyContinue\\).Source)",
+      "PowerShell(flutter --version 2>&1)",
+      "PowerShell(flutter create --project-name amx_ce_control --org com.amxctrl --platforms android,ios --no-version-check . 2>&1)",
+      "PowerShell(flutter pub get --no-version-check 2>&1)",
+      "PowerShell(flutter pub get 2>&1)",
+      "PowerShell(flutter pub get 2>&1 | Out-Null; Write-Output \"ExitCode: $LASTEXITCODE\"; Test-Path \"pubspec.lock\")",
+      "PowerShell(flutter analyze 2>&1)",
+      "Bash(tail -25 build_log.txt)",
+      "Bash(ls -la build/app/outputs/flutter-apk/)",
+      "Bash(tail -6 build_log.txt)",
+      "Bash(ls -la build/app/outputs/flutter-apk/*.apk)",
+      "PowerShell(git --version; Write-Output \"---GH---\"; \\(Get-Command gh -ErrorAction SilentlyContinue\\).Source; gh auth status 2>&1 | Select-Object -First 6)",
+      "PowerShell(git config --global user.name; git config --global user.email; Write-Output \"---HELPER---\"; git config --global credential.helper; Write-Output \"---GCM---\"; \\(Get-Command git-credential-manager -ErrorAction SilentlyContinue\\).Source)",
+      "PowerShell(git init 2>&1)",
+      "PowerShell(git symbolic-ref HEAD refs/heads/main)",
+      "PowerShell(git add -A 2>&1)"
+    ]
+  }
+}
