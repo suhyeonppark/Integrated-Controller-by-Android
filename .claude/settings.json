@@ -16,7 +16,10 @@
       "PowerShell(git config --global user.name; git config --global user.email; Write-Output \"---HELPER---\"; git config --global credential.helper; Write-Output \"---GCM---\"; \\(Get-Command git-credential-manager -ErrorAction SilentlyContinue\\).Source)",
       "PowerShell(git init 2>&1)",
       "PowerShell(git symbolic-ref HEAD refs/heads/main)",
-      "PowerShell(git add -A 2>&1)"
+      "PowerShell(git add -A 2>&1)",
+      "PowerShell(git remote add origin https://github.com/suhyeonppark/Integrated-Controller-by-Android.git 2>&1)",
+      "PowerShell(git add -A)",
+      "PowerShell(git push 2>&1)"
     ]
   }
 }

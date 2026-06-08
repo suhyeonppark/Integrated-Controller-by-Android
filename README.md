@@ -47,17 +47,32 @@ String _openCommand(int relay)  => 'exec /relay/$relay/open';
 Confirm the real verbs in the **CE-REL8 section of the AMX CE-Series manual** and
 edit **only those two builders**. All relay wire strings are isolated there.
 
-## Relay channel map (CE-REL8)
+## Relay channel map (CE-REL8) — sequential power (순차전원)
 
 | Relay | Function | Mode |
 |-------|----------|------|
-| 1 / 2 / 3 | Screen up / down / stop | momentary, interlocked |
-| 4 / 5 / 6 | Lift up / down / stop | momentary, interlocked |
-| 7 | PDU | latching (close = ON, open = OFF) |
-| 8 | AMP | latching (close = ON, open = OFF) |
+| 1 | 전체 (master) on/off | latching (close = ON, open = OFF) |
+| 2 | 순차 1 on/off | latching |
+| 3 | 순차 2 on/off | latching |
 
-Interlock: before closing a screen/lift relay, the opposite relays in the group
-are opened first, so up and down can never be energized together.
+Power circuits, so no motor interlock. The interlock framework
+(`InterlockManager`, `openBeforeClose`, momentary mode) remains in place for
+future motorized loads (screen/lift).
+
+## IR map (CE-IRS4)
+
+| IR port | Device |
+|---------|--------|
+| 1 | TV1 (Display 1) |
+| 2 | TV2 (Display 2) |
+| 3 | Projector |
+
+## Tap vs. hold
+
+- **IR buttons (TV1 / TV2 / projector): single tap.**
+- **Power buttons (순차전원): press-and-hold for 2 seconds** to activate. A
+  progress fill shows the hold; releasing early cancels. The deliberate hold
+  replaces the confirmation dialog, preventing accidental power switching.
 
 ## Settings (persisted via shared_preferences)
 
@@ -66,8 +81,8 @@ CE-IRS4 IP/port, CE-REL8 IP/port, TCP timeout (default 2000 ms), button lock
 
 ## Safety & UX
 
-- Risky buttons (system off, all-display off, PDU/AMP off, screen/lift up/down)
-  show a confirmation dialog.
+- Risky tap buttons (system off, all-display off, projector off) show a
+  confirmation dialog. Power buttons use the 2-second hold instead.
 - Anti double-tap: each button is locked for `button_lock_ms` after a press;
   all controls are disabled while a macro runs.
 - A momentary relay whose trailing OPEN fails is retried, then raises a strong
