@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../actions/action_ids.dart';
 import '../models/button_config.dart';
+import '../widgets/control_button.dart';
 import '../widgets/grouped_buttons_view.dart';
+import '../widgets/section_card.dart';
 
 /// CE-REL8 power control screen. Buttons are user-defined (settings → 버튼 편집).
 ///
-/// Power buttons default to a 2-second press-and-hold (set per button), so an
+/// Risky power buttons show a confirmation popup before switching, so an
 /// accidental touch can never switch power.
 class PowerScreen extends StatelessWidget {
   const PowerScreen({super.key});
@@ -14,20 +17,28 @@ class PowerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const GroupedButtonsView(
       screen: ButtonScreen.power,
-      header: Padding(
-        padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
-        child: Row(
-          children: [
-            Icon(Icons.touch_app, size: 18),
-            SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                '길게 누르기가 설정된 전원 버튼은 2초간 눌러야 작동합니다.',
-                style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
-              ),
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionCard(
+            title: '전원 전체',
+            child: ButtonGrid(
+              children: [
+                ControlButton(
+                  label: '전체 ON',
+                  actionId: ActionIds.seqAllOn,
+                  icon: Icons.power_settings_new,
+                ),
+                ControlButton(
+                  label: '전체 OFF',
+                  actionId: ActionIds.seqAllOff,
+                  icon: Icons.power_off,
+                  danger: true,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

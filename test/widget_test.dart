@@ -30,9 +30,10 @@ class _FakeTcpClient extends CeTcpClient {
 void main() {
   test('default buttons cover the ids the built-in macros reference', () {
     final ids = {for (final b in defaultButtons()) b.id};
+    final macroIds = {for (final m in builtInMacros()) m.id};
     for (final macro in builtInMacros()) {
       for (final step in macro.steps) {
-        expect(ids.contains(step.actionId), isTrue,
+        expect(ids.contains(step.actionId) || macroIds.contains(step.actionId), isTrue,
             reason: 'macro ${macro.id} references missing ${step.actionId}');
       }
     }
@@ -41,9 +42,9 @@ void main() {
   test('ButtonConfig round-trips through JSON', () {
     const b = ButtonConfig(
       id: 'x1',
-      label: 'POWER ON',
+      label: '프롬프터 TV ON',
       screen: ButtonScreen.ir,
-      group: 'TV 1',
+      group: '프롬프터 TV',
       type: ButtonType.ir,
       irPort: 2,
       irSendMode: IrSendMode.named,
@@ -61,17 +62,17 @@ void main() {
   test('IR ButtonConfig converts to an IrAction with the right port', () {
     const b = ButtonConfig(
       id: 'x2',
-      label: 'HDMI 1',
+      label: 'PGM TV ON',
       screen: ButtonScreen.ir,
-      group: 'TV 2',
+      group: 'PGM TV',
       type: ButtonType.ir,
       irPort: 2,
-      irName: 'HDMI1',
+      irName: 'POWER_ON',
     );
     final def = b.toActionDef();
     expect(def, isA<IrAction>());
     expect((def as IrAction).irPort, 2);
-    expect(def.irName, 'HDMI1');
+    expect(def.irName, 'POWER_ON');
   });
 
   test('CE-IRS4 builds the correct named IR command path', () async {
@@ -111,8 +112,10 @@ void main() {
     expect(macroIds, containsAll(<String>[
       ActionIds.systemOn,
       ActionIds.systemOff,
-      ActionIds.presentationMode,
-      ActionIds.standbyMode,
+      ActionIds.seqAllOn,
+      ActionIds.seqAllOff,
+      ActionIds.allDisplayOn,
+      ActionIds.allDisplayOff,
     ]));
   });
 }

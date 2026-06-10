@@ -6,13 +6,9 @@ import 'confirm_dialog.dart';
 
 /// The primary touch control. One button = one action_id.
 ///
-/// Two activation modes:
-///  - **tap** (default): single tap runs the action. Risky actions first show a
-///    confirmation dialog.
-///  - **hold** ([holdMs] > 0): the operator must press and hold for [holdMs]
-///    before the action fires (used for power control). A progress fill shows
-///    the hold. Releasing early cancels. The deliberate hold replaces the
-///    confirmation dialog, so hold buttons never also pop a confirm.
+/// Activation is a single tap. Risky actions (those whose action def sets
+/// `confirm`) first show a large confirmation dialog — this replaced the old
+/// press-and-hold gesture, which testers found awkward.
 ///
 /// Shared behaviour (spec §11.3, §14, §15, §16):
 ///  - anti double-tap lock for `button_lock_ms` after each activation
@@ -28,7 +24,7 @@ class ControlButton extends StatefulWidget {
     this.icon,
     this.danger = false,
     this.expand = true,
-    this.holdMs = 0,
+    this.active = false,
   });
 
   final String label;
@@ -37,71 +33,35 @@ class ControlButton extends StatefulWidget {
   final bool danger;
   final bool expand;
 
-  /// If > 0, the button must be held this long to activate.
-  final int holdMs;
-
-  bool get isHold => holdMs > 0;
+  /// True when this button represents the device's current state (e.g. the
+  /// "ON" button while the relay is currently ON). Rendered with a restrained
+  /// tinted surface and accent rail so the operator can see state without
+  /// turning the controls into bright warning blocks.
+  final bool active;
 
   @override
   State<ControlButton> createState() => _ControlButtonState();
 }
 
-class _ControlButtonState extends State<ControlButton>
-    with SingleTickerProviderStateMixin {
+class _ControlButtonState extends State<ControlButton> {
   bool _locked = false;
-  AnimationController? _hold;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.isHold) {
-      _hold = AnimationController(
-        vsync: this,
-        duration: Duration(milliseconds: widget.holdMs),
-      )..addStatusListener((status) {
-          if (status == AnimationStatus.completed) {
-            _activate(); // hold reached — fire (no confirm dialog)
-            _hold?.reset();
-          }
-        });
-    }
-  }
-
-  @override
-  void dispose() {
-    _hold?.dispose();
-    super.dispose();
-  }
 
   bool get _disabled => _locked || AppScope.read(context).isBusy;
 
-  // --- Tap mode ---
   Future<void> _onTap() async {
     final state = AppScope.read(context);
     if (state.router.requiresConfirm(widget.actionId)) {
       final ok = await showConfirmDialog(
         context,
         message: state.router.confirmMessage(widget.actionId),
+        danger: widget.danger,
       );
       if (!ok) return;
     }
     await _activate();
   }
 
-  // --- Hold mode gesture handlers ---
-  void _onHoldStart() {
-    if (_disabled) return;
-    _hold?.forward();
-  }
-
-  void _onHoldEnd() {
-    final c = _hold;
-    if (c != null && c.status != AnimationStatus.completed) {
-      c.reverse();
-    }
-  }
-
-  /// Runs the action and shows feedback. Shared by both modes.
+  /// Runs the action and shows feedback.
   Future<void> _activate() async {
     if (_locked) return;
     final state = AppScope.read(context);
@@ -122,8 +82,11 @@ class _ControlButtonState extends State<ControlButton>
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          icon: const Icon(Icons.warning_amber_rounded,
-              color: Colors.orange, size: 40),
+          icon: const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange,
+            size: 40,
+          ),
           title: const Text('경고'),
           content: Text(result.message, style: const TextStyle(fontSize: 18)),
           actions: [
@@ -137,6 +100,10 @@ class _ControlButtonState extends State<ControlButton>
     } else {
       messenger.showSnackBar(
         SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           content: Text('${widget.label}: ${result.message}'),
           backgroundColor: result.success ? null : Colors.red.shade700,
           duration: const Duration(milliseconds: 1800),
@@ -148,113 +115,131 @@ class _ControlButtonState extends State<ControlButton>
     if (mounted) setState(() => _locked = false);
   }
 
+  // Quiet industrial palette: enough colour to read state at a glance, but
+  // muted enough for a control room UI.
+  static const Color _ink = Color(0xFF20242B);
+  static const Color _surface = Color(0xFFFFFFFF);
+  static const Color _surfaceActive = Color(0xFFF5F8F7);
+  static const Color _dangerSurface = Color(0xFFFBF7F6);
+  static const Color _danger = Color(0xFFA94A3D);
+  static const Color _dangerSoft = Color(0xFFD7A098);
+  static const Color _on = Color(0xFF3F7568);
+  static const Color _onSoft = Color(0xFF9DBDB4);
+  static const Color _border = Color(0xFFE2E5E8);
+  static const Color _muted = Color(0xFF7D848D);
+
   @override
   Widget build(BuildContext context) {
-    final state = AppScope.of(context);
-    final disabled = _locked || state.isBusy;
-    final scheme = Theme.of(context).colorScheme;
-    final bg = widget.danger ? Colors.red.shade700 : scheme.primaryContainer;
-    final fg = widget.danger ? Colors.white : scheme.onPrimaryContainer;
+    final disabled = _disabled;
+    final active = widget.active;
+    final Color activeColor = widget.danger ? _danger : _on;
+    final Color accentSoft = widget.danger ? _dangerSoft : _onSoft;
 
-    final Widget core = widget.isHold
-        ? _buildHoldButton(disabled, bg, fg)
-        : _buildTapButton(disabled, bg, fg);
+    final Color bg = active
+        ? (widget.danger ? _dangerSurface : _surfaceActive)
+        : _surface;
+    final Color fg = active ? activeColor : (widget.danger ? _danger : _ink);
+    final Color iconColor = active ? activeColor : _muted;
+    final Color role = activeColor;
+    final Color border = active ? accentSoft : _border;
 
-    return widget.expand ? SizedBox(width: double.infinity, child: core) : core;
-  }
-
-  Widget _buildTapButton(bool disabled, Color bg, Color fg) {
-    return FilledButton(
-      onPressed: disabled ? null : _onTap,
-      style: _style(bg, fg),
-      child: _content(fg, showSpinner: _locked),
-    );
-  }
-
-  Widget _buildHoldButton(bool disabled, Color bg, Color fg) {
-    return GestureDetector(
-      onTapDown: (_) => _onHoldStart(),
-      onTapUp: (_) => _onHoldEnd(),
-      onTapCancel: _onHoldEnd,
-      child: AnimatedBuilder(
-        animation: _hold!,
-        builder: (context, _) {
-          final progress = _hold!.value;
-          final effectiveBg = disabled ? bg.withValues(alpha: 0.35) : bg;
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+    final Widget core = Opacity(
+      opacity: disabled ? 0.45 : 1,
+      child: Material(
+        color: bg,
+        elevation: active ? 1 : 0,
+        shadowColor: activeColor.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: border, width: active ? 1.4 : 1.1),
+        ),
+        child: InkWell(
+          onTap: disabled ? null : _onTap,
+          splashColor: role.withValues(alpha: 0.08),
+          highlightColor: role.withValues(alpha: 0.04),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 76),
             child: Stack(
+              fit: StackFit.expand,
               children: [
-                // Base
-                Container(
-                  height: 72,
-                  color: effectiveBg,
-                ),
-                // Hold progress fill
-                FractionallySizedBox(
-                  widthFactor: progress.clamp(0.0, 1.0),
-                  child: Container(
-                    height: 72,
-                    color: Colors.white.withValues(alpha: 0.35),
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    width: active ? 5 : 3,
+                    color: active
+                        ? activeColor
+                        : (widget.danger
+                              ? _danger.withValues(alpha: 0.34)
+                              : Colors.transparent),
                   ),
                 ),
-                // Content
                 Positioned.fill(
-                  child: Center(
-                    child: _content(
-                      disabled ? fg.withValues(alpha: 0.5) : fg,
-                      showSpinner: _locked,
-                      holdHint: progress == 0 && !_locked,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
+                    child: Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          if (_locked)
+                            SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: iconColor,
+                              ),
+                            )
+                          else if (widget.icon != null)
+                            Icon(widget.icon, size: 22, color: iconColor),
+                          if (_locked || widget.icon != null)
+                            const SizedBox(width: 12),
+                          Flexible(
+                            child: Text(
+                              widget.label,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: active
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                                color: fg,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                          ),
+                          if (active) ...[
+                            const SizedBox(width: 10),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: activeColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  ButtonStyle _style(Color bg, Color fg) => FilledButton.styleFrom(
-        backgroundColor: bg,
-        foregroundColor: fg,
-        disabledBackgroundColor: bg.withValues(alpha: 0.35),
-        disabledForegroundColor: fg.withValues(alpha: 0.5),
-        minimumSize: const Size(0, 72), // ≥72dp touch target (spec §12)
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      );
-
-  Widget _content(Color fg, {bool showSpinner = false, bool holdHint = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (showSpinner)
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-        else if (holdHint)
-          Icon(Icons.touch_app, size: 22, color: fg)
-        else if (widget.icon != null)
-          Icon(widget.icon, size: 24, color: fg),
-        if (showSpinner || holdHint || widget.icon != null)
-          const SizedBox(width: 10),
-        Flexible(
-          child: Text(
-            widget.isHold && holdHint ? '${widget.label} (길게)' : widget.label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: fg,
-            ),
           ),
         ),
-      ],
+      ),
     );
+
+    return widget.expand ? SizedBox(width: double.infinity, child: core) : core;
   }
 }

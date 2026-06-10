@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// A titled card grouping related control buttons (e.g. "SCREEN", "PROJECTOR").
+/// A titled card grouping related control buttons (e.g. "전원", "프롬프터 TV").
 class SectionCard extends StatelessWidget {
   const SectionCard({super.key, required this.title, required this.child});
 
@@ -9,50 +9,63 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12, left: 4),
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
+    // Minimal: no boxed card — a quiet section label over white tile buttons
+    // floating on the grey page background, so each tile reads clearly.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 12),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: Color(0xFF8A8F98),
               ),
             ),
-            child,
-          ],
-        ),
+          ),
+          child,
+        ],
       ),
     );
   }
 }
 
-/// Lays out control buttons in a responsive grid with [columns] per row.
+/// Lays out control buttons in a responsive grid with [columns] per row and a
+/// fixed button height, so buttons look consistent on any screen width.
 class ButtonGrid extends StatelessWidget {
-  const ButtonGrid({super.key, required this.children, this.columns = 2});
+  const ButtonGrid({
+    super.key,
+    required this.children,
+    this.columns = 2,
+    this.buttonHeight = 92,
+  });
 
   final List<Widget> children;
   final int columns;
 
+  /// Fixed height of each button cell.
+  final double buttonHeight;
+
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: columns,
+    return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 2.6,
-      children: children,
+      padding: EdgeInsets.zero,
+      itemCount: children.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        mainAxisSpacing: 14,
+        crossAxisSpacing: 14,
+        mainAxisExtent: buttonHeight,
+      ),
+      itemBuilder: (context, i) => children[i],
     );
   }
 }

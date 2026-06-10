@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../actions/action_models.dart';
 import '../app_state.dart';
 import '../models/button_config.dart';
 import 'control_button.dart';
@@ -18,9 +19,23 @@ class GroupedButtonsView extends StatelessWidget {
 
   final ButtonScreen screen;
 
-  /// Optional widget shown above the first section (e.g. the hold hint).
+  /// Optional widget shown above the first section (e.g. a hint).
   final Widget? header;
   final int columns;
+
+  /// Whether [b] represents the relay's current latched state, so the button
+  /// can be highlighted. Only latch ON/OFF relay buttons have a meaningful
+  /// state; momentary pulses and IR buttons never do.
+  bool _isActive(AppState state, ButtonConfig b) {
+    if (b.type != ButtonType.relay) return false;
+    final on = state.relayIsOn(b.relay);
+    if (on == null) return false;
+    return switch (b.relayMode) {
+      RelayMode.latchClose => on == true,
+      RelayMode.latchOpen => on == false,
+      RelayMode.momentary => false,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +44,7 @@ class GroupedButtonsView extends StatelessWidget {
 
     if (groups.isEmpty) {
       return ListView(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         children: [
           ?header,
           const Padding(
@@ -61,7 +76,7 @@ class GroupedButtonsView extends StatelessWidget {
                     label: b.label,
                     actionId: b.id,
                     danger: b.danger,
-                    holdMs: b.holdMs,
+                    active: _isActive(state, b),
                   ),
               ],
             ),

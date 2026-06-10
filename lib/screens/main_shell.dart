@@ -5,6 +5,7 @@ import 'home_screen.dart';
 import 'ir_screen.dart';
 import 'relay_screen.dart';
 import 'settings_screen.dart';
+// ConnectionDots lives in status_bar.dart.
 
 /// Root navigation shell: persistent status bar on top, the four screens
 /// switched via a bottom navigation bar (spec §10).
@@ -18,7 +19,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _index = 0;
 
-  static const _titles = ['AMX CE CONTROL', 'IR 제어', '전원 제어', '설정'];
+  static const _titles = ['전원제어', 'IR 제어', '전원 제어', '설정'];
 
   static const _screens = [
     HomeScreen(),
@@ -33,14 +34,10 @@ class _MainShellState extends State<MainShell> {
       appBar: AppBar(
         title: Text(_titles[_index]),
         centerTitle: true,
+        actions: const [ConnectionDots(), SizedBox(width: 8)],
       ),
-      body: Column(
-        children: [
-          const StatusBar(),
-          Expanded(
-            child: IndexedStack(index: _index, children: _screens),
-          ),
-        ],
+      body: SafeArea(
+        child: IndexedStack(index: _index, children: _screens),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
@@ -48,7 +45,10 @@ class _MainShellState extends State<MainShell> {
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: '홈'),
-          NavigationDestination(icon: Icon(Icons.settings_remote), label: 'IR 제어'),
+          NavigationDestination(
+            icon: Icon(Icons.settings_remote),
+            label: 'IR 제어',
+          ),
           NavigationDestination(icon: Icon(Icons.power), label: '전원 제어'),
           NavigationDestination(icon: Icon(Icons.settings), label: '설정'),
         ],

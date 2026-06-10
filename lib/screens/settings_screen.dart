@@ -85,12 +85,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _sectionTitle('CE-IRS4 (IR)'),
           _ipField('CE-IRS4 IP', _irs4Ip),
           _portField('CE-IRS4 Port', _irs4Port),
-          _testRow('CE-IRS4', state.irs4Status, () => state.testIrs4()),
+          _testRow(
+            'CE-IRS4',
+            state.irs4Status,
+            () => state.testIrs4(
+              hostOverride: _irs4Ip.text.trim(),
+              portOverride: int.tryParse(_irs4Port.text.trim()),
+            ),
+          ),
           const SizedBox(height: 24),
           _sectionTitle('CE-REL8 (Relay)'),
           _ipField('CE-REL8 IP', _rel8Ip),
           _portField('CE-REL8 Port', _rel8Port),
-          _testRow('CE-REL8', state.rel8Status, () => state.testRel8()),
+          _testRow(
+            'CE-REL8',
+            state.rel8Status,
+            () => state.testRel8(
+              hostOverride: _rel8Ip.text.trim(),
+              portOverride: int.tryParse(_rel8Port.text.trim()),
+            ),
+          ),
           const SizedBox(height: 24),
           _sectionTitle('공통'),
           _numberField('TCP Timeout (ms)', _timeout, min: 200, max: 30000),
@@ -109,8 +123,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Card(
             child: ListTile(
               leading: const Icon(Icons.smart_button, size: 28),
-              title: const Text('버튼 편집',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              title: const Text(
+                '버튼 편집',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               subtitle: const Text('IR/전원 버튼 추가 · 삭제 · 수정 (포트, IR 채널, 릴레이 번호)'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
@@ -124,7 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: Icon(Icons.info_outline),
             title: Text('앱 정보'),
             subtitle: Text(
-              'AMX CE Control · v1.0.0\n'
+              '전원제어 · v1.0.0\n'
               'CE-IRS4 / CE-REL8 standalone tablet controller',
             ),
           ),
@@ -134,26 +150,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _sectionTitle(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    ),
+  );
 
   Widget _ipField(String label, TextEditingController c) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: TextFormField(
-          controller: c,
-          decoration: InputDecoration(
-            labelText: label,
-            border: const OutlineInputBorder(),
-            hintText: '192.168.1.100',
-          ),
-          keyboardType: TextInputType.text,
-          validator: _validateIp,
-        ),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: TextFormField(
+      controller: c,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        hintText: '192.168.1.100',
+      ),
+      keyboardType: TextInputType.text,
+      validator: _validateIp,
+    ),
+  );
 
   Widget _portField(String label, TextEditingController c) =>
       _numberField(label, c, min: 1, max: 65535);
@@ -163,25 +179,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     TextEditingController c, {
     required int min,
     required int max,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: TextFormField(
-          controller: c,
-          decoration: InputDecoration(
-            labelText: label,
-            border: const OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          validator: (v) {
-            final n = int.tryParse((v ?? '').trim());
-            if (n == null) return '숫자를 입력하세요';
-            if (n < min || n > max) return '$min ~ $max 범위로 입력하세요';
-            return null;
-          },
-        ),
-      );
+  }) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: TextFormField(
+      controller: c,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      validator: (v) {
+        final n = int.tryParse((v ?? '').trim());
+        if (n == null) return '숫자를 입력하세요';
+        if (n < min || n > max) return '$min ~ $max 범위로 입력하세요';
+        return null;
+      },
+    ),
+  );
 
   String? _validateIp(String? v) {
     final s = (v ?? '').trim();
@@ -205,7 +220,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         break;
       case DeviceConnectionState.offline:
         color = Colors.red;
-        text = '$name: OFFLINE${status.detail != null ? ' - ${status.detail}' : ''}';
+        text =
+            '$name: OFFLINE${status.detail != null ? ' - ${status.detail}' : ''}';
         break;
       case DeviceConnectionState.checking:
         color = Colors.orange;
@@ -221,8 +237,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Row(
         children: [
           OutlinedButton.icon(
-            onPressed:
-                status.state == DeviceConnectionState.checking ? null : onTest,
+            onPressed: status.state == DeviceConnectionState.checking
+                ? null
+                : onTest,
             icon: const Icon(Icons.wifi_tethering),
             label: const Text('연결 테스트'),
           ),

@@ -11,32 +11,23 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       children: const [
         SectionCard(
-          title: '시스템',
+          title: '전체 시스템',
           child: ButtonGrid(
+            buttonHeight: 112,
             children: [
               ControlButton(
-                label: '시스템 ON',
+                label: '전체 시스템 ON',
                 actionId: ActionIds.systemOn,
                 icon: Icons.power_settings_new,
               ),
               ControlButton(
-                label: '시스템 OFF',
+                label: '전체 시스템 OFF',
                 actionId: ActionIds.systemOff,
                 icon: Icons.power_off,
                 danger: true,
-              ),
-              ControlButton(
-                label: '발표 모드',
-                actionId: ActionIds.presentationMode,
-                icon: Icons.slideshow,
-              ),
-              ControlButton(
-                label: '대기 모드',
-                actionId: ActionIds.standbyMode,
-                icon: Icons.bedtime,
               ),
             ],
           ),
@@ -44,14 +35,15 @@ class HomeScreen extends StatelessWidget {
         SectionCard(
           title: '디스플레이',
           child: ButtonGrid(
+            buttonHeight: 112,
             children: [
               ControlButton(
-                label: '전체 디스플레이 ON',
+                label: 'TV 전체 ON',
                 actionId: ActionIds.allDisplayOn,
                 icon: Icons.tv,
               ),
               ControlButton(
-                label: '전체 디스플레이 OFF',
+                label: 'TV 전체 OFF',
                 actionId: ActionIds.allDisplayOff,
                 icon: Icons.tv_off,
                 danger: true,

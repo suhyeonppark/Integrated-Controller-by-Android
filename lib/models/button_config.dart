@@ -20,7 +20,6 @@ class ButtonConfig {
     this.order = 0,
     this.confirm = false,
     this.danger = false,
-    this.holdMs = 0,
     // IR
     this.irPort = 1,
     this.irSendMode = IrSendMode.named,
@@ -44,9 +43,6 @@ class ButtonConfig {
   final bool confirm;
   final bool danger;
 
-  /// If > 0, button must be press-and-held this long to activate.
-  final int holdMs;
-
   // IR parameters
   final int irPort;
   final IrSendMode irSendMode;
@@ -57,8 +53,6 @@ class ButtonConfig {
   final int relay;
   final RelayMode relayMode;
   final int durationMs;
-
-  bool get isHold => holdMs > 0;
 
   /// Builds the confirmation prompt shown for tap buttons with [confirm].
   String get _confirmMessage => "'$label'을(를) 실행하시겠습니까?";
@@ -96,7 +90,6 @@ class ButtonConfig {
     ButtonType? type,
     bool? confirm,
     bool? danger,
-    int? holdMs,
     int? irPort,
     IrSendMode? irSendMode,
     String? irName,
@@ -114,7 +107,6 @@ class ButtonConfig {
       type: type ?? this.type,
       confirm: confirm ?? this.confirm,
       danger: danger ?? this.danger,
-      holdMs: holdMs ?? this.holdMs,
       irPort: irPort ?? this.irPort,
       irSendMode: irSendMode ?? this.irSendMode,
       irName: irName ?? this.irName,
@@ -134,7 +126,6 @@ class ButtonConfig {
         'type': type.name,
         'confirm': confirm,
         'danger': danger,
-        'holdMs': holdMs,
         'irPort': irPort,
         'irSendMode': irSendMode.name,
         'irName': irName,
@@ -152,9 +143,11 @@ class ButtonConfig {
       group: j['group'] as String? ?? '',
       order: (j['order'] as num?)?.toInt() ?? 0,
       type: _enumByName(ButtonType.values, j['type'], ButtonType.ir),
-      confirm: j['confirm'] as bool? ?? false,
+      // Legacy migration: buttons that used the old 2-second hold (holdMs > 0)
+      // are now protected by a confirmation popup instead.
+      confirm: (j['confirm'] as bool? ?? false) ||
+          ((j['holdMs'] as num?)?.toInt() ?? 0) > 0,
       danger: j['danger'] as bool? ?? false,
-      holdMs: (j['holdMs'] as num?)?.toInt() ?? 0,
       irPort: (j['irPort'] as num?)?.toInt() ?? 1,
       irSendMode:
           _enumByName(IrSendMode.values, j['irSendMode'], IrSendMode.named),

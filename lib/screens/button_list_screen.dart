@@ -150,7 +150,7 @@ class ButtonListScreen extends StatelessWidget {
       RelayMode.latchOpen => 'OFF 유지',
       RelayMode.momentary => '순간 ${b.durationMs}ms',
     };
-    final hold = b.holdMs > 0 ? ' · 길게 2초' : '';
-    return '릴레이 ${b.relay} · $mode$hold';
+    final confirm = b.confirm ? ' · 확인 팝업' : '';
+    return '릴레이 ${b.relay} · $mode$confirm';
   }
 }

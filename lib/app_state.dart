@@ -6,6 +6,7 @@ import 'actions/interlock_manager.dart';
 import 'actions/macro_registry.dart';
 import 'ce/ce_irs4_client.dart';
 import 'ce/ce_rel8_client.dart';
+import 'ce/ce_rel8_subscription.dart';
 import 'ce/ce_tcp_client.dart';
 import 'config/app_config.dart';
 import 'config/button_repository.dart';
@@ -20,12 +21,17 @@ import 'models/device_status.dart';
 /// effect immediately without rebuilding the object graph.
 class AppState extends ChangeNotifier {
   AppState({ConfigRepository? repository, ButtonRepository? buttonRepository})
-      : _repo = repository ?? ConfigRepository(),
-        _buttonRepo = buttonRepository ?? ButtonRepository() {
+    : _repo = repository ?? ConfigRepository(),
+      _buttonRepo = buttonRepository ?? ButtonRepository() {
     final tcp = CeTcpClient();
     _tcp = tcp;
     final irs4 = CeIrs4Client(tcp, () => _config.irs4);
-    final rel8 = CeRel8Client(tcp, () => _config.rel8);
+    final rel8 = CeRel8Client(tcp, () => _config.rel8, onState: _onRelayState);
+    _rel8Subscription = CeRel8Subscription(
+      connection: () => _config.rel8,
+      onState: _onRelayState,
+      onStatus: _onRel8SubscriptionStatus,
+    );
     router = ActionRouter(
       irs4: irs4,
       interlock: InterlockManager(rel8),
@@ -36,6 +42,7 @@ class AppState extends ChangeNotifier {
   final ConfigRepository _repo;
   final ButtonRepository _buttonRepo;
   late final CeTcpClient _tcp;
+  late final CeRel8Subscription _rel8Subscription;
   late final ActionRouter router;
 
   AppConfig _config = const AppConfig();
@@ -77,6 +84,29 @@ class AppState extends ChangeNotifier {
   DeviceStatus _rel8Status = const DeviceStatus();
   DeviceStatus get rel8Status => _rel8Status;
 
+  /// Last-known latched state per relay number (`true` = ON/closed). Absent =
+  /// unknown (no command sent yet this session). Updated from the CE-REL8
+  /// client whenever a relay command succeeds.
+  final Map<int, bool> _relayClosed = {};
+
+  /// Last-known ON/OFF state of [relay], or null if not yet known.
+  bool? relayIsOn(int relay) => _relayClosed[relay];
+
+  void _onRelayState(int relay, bool closed) {
+    _relayClosed[relay] = closed;
+    notifyListeners();
+  }
+
+  void _onRel8SubscriptionStatus(bool connected, String? detail) {
+    _rel8Status = DeviceStatus(
+      state: connected
+          ? DeviceConnectionState.online
+          : DeviceConnectionState.offline,
+      detail: detail,
+    );
+    notifyListeners();
+  }
+
   /// True while a macro (or any multi-step action) is running. The UI disables
   /// control buttons during this window (spec §15).
   bool _busy = false;
@@ -92,6 +122,7 @@ class AppState extends ChangeNotifier {
     _rebuildActionMap();
     _loaded = true;
     notifyListeners();
+    _rel8Subscription.start();
     // Fire-and-forget initial connectivity probe.
     unawaitedTest();
   }
@@ -116,13 +147,17 @@ class AppState extends ChangeNotifier {
   /// Replaces the button with the same id.
   Future<bool> updateButton(ButtonConfig button) {
     _buttons = [
-      for (final b in _buttons) if (b.id == button.id) button else b,
+      for (final b in _buttons)
+        if (b.id == button.id) button else b,
     ];
     return _persistButtons();
   }
 
   Future<bool> deleteButton(String id) {
-    _buttons = [for (final b in _buttons) if (b.id != id) b];
+    _buttons = [
+      for (final b in _buttons)
+        if (b.id != id) b,
+    ];
     return _persistButtons();
   }
 
@@ -138,39 +173,60 @@ class AppState extends ChangeNotifier {
 
   void unawaitedTest() {
     testIrs4();
-    testRel8();
   }
 
   /// Persist new settings and refresh status. Returns true on success.
   Future<bool> saveConfig(AppConfig newConfig) async {
     _config = newConfig;
+    _relayClosed.clear();
     notifyListeners();
+    _rel8Subscription.restart();
     final ok = await _repo.save(newConfig);
     return ok;
   }
 
-  Future<DeviceStatus> testIrs4() async {
+  /// Tests CE-IRS4 reachability. [hostOverride]/[portOverride] let the settings
+  /// screen probe the address currently typed in the form without saving first.
+  Future<DeviceStatus> testIrs4({
+    String? hostOverride,
+    int? portOverride,
+  }) async {
     _irs4Status = _irs4Status.copyWith(state: DeviceConnectionState.checking);
     notifyListeners();
     final c = _config.irs4;
-    final result =
-        await _tcp.testConnection(host: c.host, port: c.port, timeout: c.timeout);
+    final result = await _tcp.testConnection(
+      host: hostOverride ?? c.host,
+      port: portOverride ?? c.port,
+      timeout: c.timeout,
+    );
     _irs4Status = DeviceStatus(
-      state: result.success ? DeviceConnectionState.online : DeviceConnectionState.offline,
+      state: result.success
+          ? DeviceConnectionState.online
+          : DeviceConnectionState.offline,
       detail: result.success ? null : result.message,
     );
     notifyListeners();
     return _irs4Status;
   }
 
-  Future<DeviceStatus> testRel8() async {
+  /// Tests CE-REL8 reachability. [hostOverride]/[portOverride] let the settings
+  /// screen probe the address currently typed in the form without saving first.
+  Future<DeviceStatus> testRel8({
+    String? hostOverride,
+    int? portOverride,
+  }) async {
     _rel8Status = _rel8Status.copyWith(state: DeviceConnectionState.checking);
     notifyListeners();
     final c = _config.rel8;
-    final result =
-        await _tcp.testConnection(host: c.host, port: c.port, timeout: c.timeout);
+    final result = await _tcp.testConnection(
+      host: hostOverride ?? c.host,
+      port: portOverride ?? c.port,
+      timeout: c.timeout,
+    );
     _rel8Status = DeviceStatus(
-      state: result.success ? DeviceConnectionState.online : DeviceConnectionState.offline,
+      state: result.success
+          ? DeviceConnectionState.online
+          : DeviceConnectionState.offline,
       detail: result.success ? null : result.message,
     );
     notifyListeners();
@@ -194,15 +250,18 @@ class AppState extends ChangeNotifier {
       }
     }
   }
+
+  @override
+  void dispose() {
+    _rel8Subscription.stop();
+    super.dispose();
+  }
 }
 
 /// Inherited access to [AppState]. Rebuilds dependents on notify.
 class AppScope extends InheritedNotifier<AppState> {
-  const AppScope({
-    super.key,
-    required AppState state,
-    required super.child,
-  }) : super(notifier: state);
+  const AppScope({super.key, required AppState state, required super.child})
+    : super(notifier: state);
 
   static AppState of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();

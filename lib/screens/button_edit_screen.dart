@@ -34,7 +34,6 @@ class _ButtonEditScreenState extends State<ButtonEditScreen> {
   late IrSendMode _irSendMode;
   late int _relay;
   late RelayMode _relayMode;
-  late bool _hold;
   late bool _confirm;
   late bool _danger;
 
@@ -54,7 +53,6 @@ class _ButtonEditScreenState extends State<ButtonEditScreen> {
     _irSendMode = b?.irSendMode ?? IrSendMode.named;
     _relay = b?.relay ?? 1;
     _relayMode = b?.relayMode ?? RelayMode.latchClose;
-    _hold = (b?.holdMs ?? 0) > 0;
     _confirm = b?.confirm ?? false;
     _danger = b?.danger ?? false;
   }
@@ -74,7 +72,6 @@ class _ButtonEditScreenState extends State<ButtonEditScreen> {
     final state = AppScope.read(context);
     final id = widget.existing?.id ?? state.newButtonId();
     final type = _isIr ? ButtonType.ir : ButtonType.relay;
-    final holdMs = (!_isIr && _hold) ? 2000 : 0;
 
     final button = ButtonConfig(
       id: id,
@@ -85,7 +82,6 @@ class _ButtonEditScreenState extends State<ButtonEditScreen> {
       order: widget.existing?.order ?? 0,
       confirm: _confirm,
       danger: _danger,
-      holdMs: holdMs,
       irPort: _irPort,
       irSendMode: _irSendMode,
       irName: _irName.text.trim(),
@@ -144,7 +140,7 @@ class _ButtonEditScreenState extends State<ButtonEditScreen> {
               controller: _group,
               decoration: InputDecoration(
                 labelText: '그룹 (섹션 제목)',
-                hintText: _isIr ? '예: TV 1' : '예: 순차전원 · 개별',
+                hintText: _isIr ? '예: 프롬프터 TV' : '예: 전원',
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -272,17 +268,11 @@ class _ButtonEditScreenState extends State<ButtonEditScreen> {
           },
         ),
       SwitchListTile(
-        title: const Text('길게 누르기 (2초)'),
-        subtitle: const Text('오작동 방지. 켜면 확인 팝업 대신 2초 홀드로 작동합니다.'),
-        value: _hold,
-        onChanged: (v) => setState(() => _hold = v),
+        title: const Text('실행 전 확인 팝업'),
+        subtitle: const Text('오작동 방지. 켜면 실행 전 확인 창을 띄웁니다.'),
+        value: _confirm,
+        onChanged: (v) => setState(() => _confirm = v),
       ),
-      if (!_hold)
-        SwitchListTile(
-          title: const Text('실행 전 확인 팝업'),
-          value: _confirm,
-          onChanged: (v) => setState(() => _confirm = v),
-        ),
     ];
   }
 

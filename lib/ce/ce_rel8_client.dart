@@ -17,10 +17,16 @@ import 'ce_tcp_client.dart';
 /// The protocol has no native momentary/pulse for relays, so [relayMomentary]
 /// implements it in software (set true → wait → set false).
 class CeRel8Client {
-  CeRel8Client(this._tcp, this._connection);
+  CeRel8Client(this._tcp, this._connection, {this.onState});
 
   final CeTcpClient _tcp;
   final CeConnection Function() _connection;
+
+  /// Called after a relay command succeeds, with the new latched state
+  /// (`true` = closed/ON, `false` = open/OFF). Lets [AppState] track and show
+  /// the last-known relay state. Momentary pulses report true then false since
+  /// they run through [relayClose] + [relayOpen] internally.
+  final void Function(int relay, bool closed)? onState;
 
   /// How many times to retry a failed momentary OPEN before giving up.
   static const int _openRetries = 2;
@@ -36,13 +42,17 @@ class CeRel8Client {
   // --- Public API -----------------------------------------------------------
 
   /// Energizes (closes) a relay and leaves it closed (latching ON).
-  Future<CommandResult> relayClose(int relayNumber) {
-    return _send(_closeCommand(relayNumber));
+  Future<CommandResult> relayClose(int relayNumber) async {
+    final r = await _send(_closeCommand(relayNumber));
+    if (r.success) onState?.call(relayNumber, true);
+    return r;
   }
 
   /// De-energizes (opens) a relay and leaves it open (latching OFF).
-  Future<CommandResult> relayOpen(int relayNumber) {
-    return _send(_openCommand(relayNumber));
+  Future<CommandResult> relayOpen(int relayNumber) async {
+    final r = await _send(_openCommand(relayNumber));
+    if (r.success) onState?.call(relayNumber, false);
+    return r;
   }
 
   /// Momentary: close → wait [duration] → open.
