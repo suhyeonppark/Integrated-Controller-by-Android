@@ -1,16 +1,17 @@
-"""Generate the launcher icon: white rounded-square background with a blue
-power symbol. Renders each Android mipmap density at the size Flutter expects.
+"""Generate the launcher icon: a white rounded-square with a blue gradient
+power badge. Renders each Android mipmap density at the size Flutter expects.
 
 Run:  python tool/gen_icon.py
 """
 import math
 import os
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
-# White background, blue power glyph.
 WHITE = (255, 255, 255, 255)
-BLUE = (37, 99, 235, 255)  # #2563EB
+BLUE_TOP = (59, 130, 246)     # #3B82F6
+BLUE_BOTTOM = (29, 78, 216)   # #1D4ED8
+SHADOW = (29, 78, 216)        # badge drop shadow tint
 
 # Android legacy launcher densities -> pixel size.
 SIZES = {
@@ -25,39 +26,83 @@ RES = os.path.join("android", "app", "src", "main", "res")
 SS = 8  # supersampling factor for smooth edges
 
 
-def render(size: int) -> Image.Image:
-    s = size * SS
-    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
+def _gradient_circle(diameter: int) -> Image.Image:
+    """A circle filled with a vertical top->bottom blue gradient."""
+    grad = Image.new("RGB", (1, diameter))
+    for y in range(diameter):
+        t = y / (diameter - 1)
+        grad.putpixel(
+            (0, y),
+            tuple(
+                round(a + (b - a) * t)
+                for a, b in zip(BLUE_TOP, BLUE_BOTTOM)
+            ),
+        )
+    grad = grad.resize((diameter, diameter))
 
-    # Rounded-square white background (squircle-ish), transparent corners.
-    radius = int(s * 0.23)
-    d.rounded_rectangle([0, 0, s - 1, s - 1], radius=radius, fill=WHITE)
+    mask = Image.new("L", (diameter, diameter), 0)
+    ImageDraw.Draw(mask).ellipse([0, 0, diameter - 1, diameter - 1], fill=255)
 
-    cx = cy = s / 2
-    R = s * 0.27          # power ring radius
-    stroke = s * 0.085    # glyph stroke width
+    out = Image.new("RGBA", (diameter, diameter), (0, 0, 0, 0))
+    out.paste(grad, (0, 0), mask)
+    return out
+
+
+def _power_glyph(d: ImageDraw.ImageDraw, cx: float, cy: float, R: float,
+                 stroke: float, color) -> None:
+    """White power symbol: a ring open at the top plus a vertical bar."""
     half = stroke / 2
-
     bbox = [cx - R, cy - R, cx + R, cy + R]
-    # Ring with a gap at the top, centered on 12 o'clock (270 deg in PIL).
-    gap = 56  # degrees of opening
+    gap = 52  # degrees of opening at 12 o'clock (270 deg in PIL)
     start = 270 + gap / 2
     end = 270 - gap / 2 + 360
-    d.arc(bbox, start=start, end=end, fill=BLUE, width=int(stroke))
-
-    # Round caps on the two arc ends.
+    d.arc(bbox, start=start, end=end, fill=color, width=int(stroke))
     for ang in (start, end):
         ex = cx + R * math.cos(math.radians(ang))
         ey = cy + R * math.sin(math.radians(ang))
-        d.ellipse([ex - half, ey - half, ex + half, ey + half], fill=BLUE)
+        d.ellipse([ex - half, ey - half, ex + half, ey + half], fill=color)
 
-    # Vertical bar through the gap, with rounded caps.
-    top = cy - s * 0.36
-    bot = cy - s * 0.02
-    d.line([cx, top, cx, bot], fill=BLUE, width=int(stroke))
+    top = cy - R * 1.32
+    bot = cy - R * 0.06
+    d.line([cx, top, cx, bot], fill=color, width=int(stroke))
     for y in (top, bot):
-        d.ellipse([cx - half, y - half, cx + half, y + half], fill=BLUE)
+        d.ellipse([cx - half, y - half, cx + half, y + half], fill=color)
+
+
+def render(size: int) -> Image.Image:
+    s = size * SS
+    cx = cy = s / 2
+
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+
+    # White rounded-square background, transparent corners.
+    bg = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    ImageDraw.Draw(bg).rounded_rectangle(
+        [0, 0, s - 1, s - 1], radius=int(s * 0.23), fill=WHITE)
+    img = Image.alpha_composite(img, bg)
+
+    badge_r = s * 0.345
+    diameter = int(badge_r * 2)
+
+    # Soft drop shadow under the badge.
+    shadow = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    sy = cy + s * 0.03
+    ImageDraw.Draw(shadow).ellipse(
+        [cx - badge_r, sy - badge_r, cx + badge_r, sy + badge_r],
+        fill=SHADOW + (90,),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(s * 0.05))
+    img = Image.alpha_composite(img, shadow)
+
+    # Gradient blue badge.
+    badge = _gradient_circle(diameter)
+    badge_layer = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    badge_layer.paste(badge, (int(cx - badge_r), int(cy - badge_r)), badge)
+    img = Image.alpha_composite(img, badge_layer)
+
+    # White power glyph on the badge.
+    d = ImageDraw.Draw(img)
+    _power_glyph(d, cx, cy, R=badge_r * 0.5, stroke=s * 0.052, color=WHITE)
 
     return img.resize((size, size), Image.LANCZOS)
 
