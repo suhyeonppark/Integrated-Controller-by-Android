@@ -23,6 +23,7 @@ class PowerScreen extends StatelessWidget {
           SectionCard(
             title: '전원 전체',
             child: ButtonGrid(
+              tileWidth: kTileWidth,
               children: [
                 ControlButton(
                   label: '전체 ON',

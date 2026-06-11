@@ -4,6 +4,74 @@ import '../app_state.dart';
 import '../models/command_result.dart';
 import 'confirm_dialog.dart';
 
+/// Runs [actionId] exactly like a [ControlButton] tap: an optional confirmation
+/// dialog, dispatch via [AppState.runAction], then user feedback (a snackbar, or
+/// a large warning dialog when the result is a warning). Returns true if the
+/// action was dispatched, false if the user cancelled at the confirm step.
+///
+/// Shared by [ControlButton] and the device-card corner toggle so the safety and
+/// feedback behaviour stays identical everywhere. Callers own any busy/lock
+/// state around this call and must guard their own `mounted` afterwards.
+Future<bool> runActionWithFeedback(
+  BuildContext context, {
+  required String actionId,
+  required String label,
+  required bool danger,
+}) async {
+  final state = AppScope.read(context);
+  if (state.router.requiresConfirm(actionId)) {
+    final ok = await showConfirmDialog(
+      context,
+      message: state.router.confirmMessage(actionId),
+      danger: danger,
+    );
+    if (!ok) return false;
+  }
+  if (!context.mounted) return false;
+  final messenger = ScaffoldMessenger.of(context);
+
+  CommandResult result;
+  try {
+    result = await state.runAction(actionId);
+  } catch (e) {
+    result = CommandResult.fail('예기치 못한 오류: $e');
+  }
+
+  if (!context.mounted) return true;
+
+  if (result.isWarning) {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(
+          Icons.warning_amber_rounded,
+          color: Colors.orange,
+          size: 40,
+        ),
+        title: const Text('경고'),
+        content: Text(result.message, style: const TextStyle(fontSize: 18)),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+  } else {
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Text('$label: ${result.message}'),
+        backgroundColor: result.success ? null : Colors.red.shade700,
+        duration: const Duration(milliseconds: 1800),
+      ),
+    );
+  }
+  return true;
+}
+
 /// The primary touch control. One button = one action_id.
 ///
 /// Activation is a single tap. Risky actions (those whose action def sets
@@ -34,9 +102,8 @@ class ControlButton extends StatefulWidget {
   final bool expand;
 
   /// True when this button represents the device's current state (e.g. the
-  /// "ON" button while the relay is currently ON). Rendered with a restrained
-  /// tinted surface and accent rail so the operator can see state without
-  /// turning the controls into bright warning blocks.
+  /// "ON" button while the relay is currently ON). Rendered as a solid selected
+  /// state so it remains obvious on a tablet at arm's length.
   final bool active;
 
   @override
@@ -49,69 +116,20 @@ class _ControlButtonState extends State<ControlButton> {
   bool get _disabled => _locked || AppScope.read(context).isBusy;
 
   Future<void> _onTap() async {
-    final state = AppScope.read(context);
-    if (state.router.requiresConfirm(widget.actionId)) {
-      final ok = await showConfirmDialog(
-        context,
-        message: state.router.confirmMessage(widget.actionId),
-        danger: widget.danger,
-      );
-      if (!ok) return;
-    }
-    await _activate();
-  }
-
-  /// Runs the action and shows feedback.
-  Future<void> _activate() async {
     if (_locked) return;
     final state = AppScope.read(context);
-    final messenger = ScaffoldMessenger.of(context);
-
     setState(() => _locked = true);
 
-    CommandResult result;
-    try {
-      result = await state.runAction(widget.actionId);
-    } catch (e) {
-      result = CommandResult.fail('예기치 못한 오류: $e');
-    }
+    final ran = await runActionWithFeedback(
+      context,
+      actionId: widget.actionId,
+      label: widget.label,
+      danger: widget.danger,
+    );
 
     if (!mounted) return;
-
-    if (result.isWarning) {
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          icon: const Icon(
-            Icons.warning_amber_rounded,
-            color: Colors.orange,
-            size: 40,
-          ),
-          title: const Text('경고'),
-          content: Text(result.message, style: const TextStyle(fontSize: 18)),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('확인'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      messenger.showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          content: Text('${widget.label}: ${result.message}'),
-          backgroundColor: result.success ? null : Colors.red.shade700,
-          duration: const Duration(milliseconds: 1800),
-        ),
-      );
-    }
-
-    await Future<void>.delayed(state.config.buttonLock);
+    // Anti double-tap lock only matters once a command was actually sent.
+    if (ran) await Future<void>.delayed(state.config.buttonLock);
     if (mounted) setState(() => _locked = false);
   }
 
@@ -119,13 +137,11 @@ class _ControlButtonState extends State<ControlButton> {
   // muted enough for a control room UI.
   static const Color _ink = Color(0xFF20242B);
   static const Color _surface = Color(0xFFFFFFFF);
-  static const Color _surfaceActive = Color(0xFFF5F8F7);
-  static const Color _dangerSurface = Color(0xFFFBF7F6);
-  static const Color _danger = Color(0xFFA94A3D);
-  static const Color _dangerSoft = Color(0xFFD7A098);
-  static const Color _on = Color(0xFF3F7568);
-  static const Color _onSoft = Color(0xFF9DBDB4);
-  static const Color _border = Color(0xFFE2E5E8);
+  static const Color _danger = Color(0xFF9F3F35);
+  static const Color _dangerSoft = Color(0xFFE0A8A1);
+  static const Color _on = Color(0xFF356F62);
+  static const Color _onSoft = Color(0xFFA6C9C0);
+  static const Color _border = Color(0xFFD2D7DD);
   static const Color _muted = Color(0xFF7D848D);
 
   @override
@@ -135,11 +151,9 @@ class _ControlButtonState extends State<ControlButton> {
     final Color activeColor = widget.danger ? _danger : _on;
     final Color accentSoft = widget.danger ? _dangerSoft : _onSoft;
 
-    final Color bg = active
-        ? (widget.danger ? _dangerSurface : _surfaceActive)
-        : _surface;
-    final Color fg = active ? activeColor : (widget.danger ? _danger : _ink);
-    final Color iconColor = active ? activeColor : _muted;
+    final Color bg = active ? activeColor : _surface;
+    final Color fg = active ? Colors.white : (widget.danger ? _danger : _ink);
+    final Color iconColor = active ? Colors.white : _muted;
     final Color role = activeColor;
     final Color border = active ? accentSoft : _border;
 
@@ -147,8 +161,12 @@ class _ControlButtonState extends State<ControlButton> {
       opacity: disabled ? 0.45 : 1,
       child: Material(
         color: bg,
-        elevation: active ? 1 : 0,
-        shadowColor: activeColor.withValues(alpha: 0.10),
+        // Even idle buttons get a soft lift so they clearly read as tappable
+        // tiles (not flat panels) on either the grey page or the popup sheet.
+        elevation: active ? 2 : 1,
+        shadowColor: active
+            ? activeColor.withValues(alpha: 0.24)
+            : Colors.black.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(10),
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
@@ -172,7 +190,7 @@ class _ControlButtonState extends State<ControlButton> {
                     duration: const Duration(milliseconds: 160),
                     width: active ? 5 : 3,
                     color: active
-                        ? activeColor
+                        ? Colors.white.withValues(alpha: 0.92)
                         : (widget.danger
                               ? _danger.withValues(alpha: 0.34)
                               : Colors.transparent),
@@ -220,11 +238,25 @@ class _ControlButtonState extends State<ControlButton> {
                           if (active) ...[
                             const SizedBox(width: 10),
                             Container(
-                              width: 8,
-                              height: 8,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: activeColor,
-                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.28),
+                                ),
+                              ),
+                              child: const Text(
+                                '현재',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 0,
+                                ),
                               ),
                             ),
                           ],

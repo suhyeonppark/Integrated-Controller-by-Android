@@ -10,48 +10,34 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      children: const [
-        SectionCard(
-          title: '전체 시스템',
-          child: ButtonGrid(
-            buttonHeight: 112,
-            children: [
-              ControlButton(
-                label: '전체 시스템 ON',
-                actionId: ActionIds.systemOn,
-                icon: Icons.power_settings_new,
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: kContentMaxWidth),
+        child: ListView(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          children: const [
+            SectionCard(
+              title: '전체 전원',
+              child: ButtonGrid(
+                tileWidth: kTileWidth,
+                children: [
+                  ControlButton(
+                    label: '전체 전원 ON',
+                    actionId: ActionIds.systemOn,
+                    icon: Icons.power_settings_new,
+                  ),
+                  ControlButton(
+                    label: '전체 전원 OFF',
+                    actionId: ActionIds.systemOff,
+                    icon: Icons.power_off,
+                    danger: true,
+                  ),
+                ],
               ),
-              ControlButton(
-                label: '전체 시스템 OFF',
-                actionId: ActionIds.systemOff,
-                icon: Icons.power_off,
-                danger: true,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-        SectionCard(
-          title: '디스플레이',
-          child: ButtonGrid(
-            buttonHeight: 112,
-            children: [
-              ControlButton(
-                label: 'TV 전체 ON',
-                actionId: ActionIds.allDisplayOn,
-                icon: Icons.tv,
-              ),
-              ControlButton(
-                label: 'TV 전체 OFF',
-                actionId: ActionIds.allDisplayOff,
-                icon: Icons.tv_off,
-                danger: true,
-              ),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

@@ -18,6 +18,7 @@ class IrScreen extends StatelessWidget {
       header: SectionCard(
         title: 'TV 전체',
         child: ButtonGrid(
+          tileWidth: kTileWidth,
           children: [
             ControlButton(
               label: 'TV 전체 ON',

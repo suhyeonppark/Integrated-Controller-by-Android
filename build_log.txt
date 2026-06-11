@@ -14,7 +14,7 @@ Package shared_preferences:linux references shared_preferences_linux:linux as th
 Ask the maintainers of shared_preferences to either avoid referencing a default implementation via `platforms: linux: default_package: shared_preferences_linux` or create a plugin named shared_preferences_linux.
 
 Package shared_preferences:windows references shared_preferences_windows:windows as the default plugin, but the package does not exist, or is not a plugin package.
-Ask the maintainers of shared_preferences to either avoid referencing a default implementation via `platforms: windows: default_package: shared_preferences_windows` or create a plugin named shared_preferences_windows.
+Ask the maintainers of shared_preferences to eit1her avoid referencing a default implementation via `platforms: windows: default_package: shared_preferences_windows` or create a plugin named shared_preferences_windows.
 
 Running Gradle task 'assembleDebug'...                          
 WARNING: Your app uses the following plugins that apply Kotlin Gradle Plugin (KGP): package_info_plus, wakelock_plus

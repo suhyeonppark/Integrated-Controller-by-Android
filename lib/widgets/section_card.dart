@@ -36,36 +36,76 @@ class SectionCard extends StatelessWidget {
   }
 }
 
-/// Lays out control buttons in a responsive grid with [columns] per row and a
-/// fixed button height, so buttons look consistent on any screen width.
+/// Shared tile sizing so every control tile (master buttons + device cards)
+/// is the same size across the app, regardless of screen width.
+const double kTileWidth = 240;
+const double kTileAspect = 1.5; // width / height
+
+/// Caps the content column so tiles stay compact and grouped in a centred
+/// 2-up layout (like the reference app) instead of spreading across a wide
+/// tablet with empty columns on the right.
+const double kContentMaxWidth = 540;
+
+/// Lays out control tiles in a grid. Two modes:
+///  - [tileWidth] set → uniform fixed-size tiles that wrap into as many columns
+///    as fit (the default for control screens, so tiles never stretch into wide
+///    bars on a tablet).
+///  - otherwise → [columns] per row at a fixed [buttonHeight] (used inside the
+///    device popup, where a simple 2-up layout is wanted).
 class ButtonGrid extends StatelessWidget {
   const ButtonGrid({
     super.key,
     required this.children,
     this.columns = 2,
     this.buttonHeight = 92,
+    this.maxWidth,
+    this.tileWidth,
+    this.tileAspect = kTileAspect,
   });
 
   final List<Widget> children;
   final int columns;
 
-  /// Fixed height of each button cell.
+  /// Fixed height of each button cell (fixed-columns mode).
   final double buttonHeight;
+
+  /// Optional cap on the grid width; the grid is centred within it.
+  final double? maxWidth;
+
+  /// Target tile width. When set, tiles are this size and wrap responsively.
+  final double? tileWidth;
+
+  /// Tile width / height ratio (tile mode).
+  final double tileAspect;
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
+    final grid = GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.zero,
       itemCount: children.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: columns,
-        mainAxisSpacing: 14,
-        crossAxisSpacing: 14,
-        mainAxisExtent: buttonHeight,
-      ),
+      gridDelegate: tileWidth != null
+          ? SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: tileWidth!,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 14,
+              childAspectRatio: tileAspect,
+            )
+          : SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 14,
+              mainAxisExtent: buttonHeight,
+            ),
       itemBuilder: (context, i) => children[i],
+    );
+    if (maxWidth == null) return grid;
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth!),
+        child: grid,
+      ),
     );
   }
 }
