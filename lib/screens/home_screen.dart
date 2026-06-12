@@ -35,6 +35,19 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
+            SectionCard(
+              title: 'PC',
+              child: ButtonGrid(
+                tileWidth: kTileWidth,
+                children: [
+                  ControlButton(
+                    label: 'PC 켜기',
+                    actionId: ActionIds.wolAll,
+                    icon: Icons.computer,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

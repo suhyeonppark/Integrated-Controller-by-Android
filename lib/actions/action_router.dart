@@ -2,6 +2,7 @@
 // (this._x) aren't usable here.
 // ignore_for_file: prefer_initializing_formals
 import '../ce/ce_irs4_client.dart';
+import '../ce/wol_client.dart';
 import '../models/command_result.dart';
 import 'action_models.dart';
 import 'interlock_manager.dart';
@@ -16,13 +17,16 @@ class ActionRouter {
   ActionRouter({
     required CeIrs4Client irs4,
     required InterlockManager interlock,
+    required WolClient wol,
     required ActionDef? Function(String id) resolve,
   })  : _irs4 = irs4,
         _interlock = interlock,
+        _wol = wol,
         _resolve = resolve;
 
   final CeIrs4Client _irs4;
   final InterlockManager _interlock;
+  final WolClient _wol;
   final ActionDef? Function(String id) _resolve;
 
   ActionDef? lookup(String actionId) => _resolve(actionId);
@@ -47,6 +51,7 @@ class ActionRouter {
     return switch (def) {
       IrAction() => _runIr(def),
       RelayAction() => _interlock.executeRelay(def),
+      WolAction() => _wol.wake(def.mac, name: def.name),
       MacroAction() => _runMacro(def),
     };
   }
@@ -61,6 +66,11 @@ class ActionRouter {
   }
 
   Future<CommandResult> _runMacro(MacroAction macro) async {
+    if (macro.steps.isEmpty) {
+      // Only happens for "wake all PCs" when none are configured yet.
+      return CommandResult.fail('등록된 PC가 없습니다. 설정에서 추가하세요.');
+    }
+
     final sent = <String>[];
     var sawWarning = false;
 

@@ -3,11 +3,13 @@ import 'package:flutter/widgets.dart';
 import 'actions/action_models.dart';
 import 'actions/action_router.dart';
 import 'actions/interlock_manager.dart';
+import 'actions/action_ids.dart';
 import 'actions/macro_registry.dart';
 import 'ce/ce_irs4_client.dart';
 import 'ce/ce_rel8_client.dart';
 import 'ce/ce_rel8_subscription.dart';
 import 'ce/ce_tcp_client.dart';
+import 'ce/wol_client.dart';
 import 'config/app_config.dart';
 import 'config/button_repository.dart';
 import 'config/config_repository.dart';
@@ -35,6 +37,7 @@ class AppState extends ChangeNotifier {
     router = ActionRouter(
       irs4: irs4,
       interlock: InterlockManager(rel8),
+      wol: WolClient(),
       resolve: (id) => _actionMap[id],
     );
   }
@@ -64,6 +67,20 @@ class AppState extends ChangeNotifier {
     for (final m in builtInMacros()) {
       map[m.id] = m;
     }
+    // Wake-on-LAN actions generated from the configured PC list: one per PC
+    // plus a "wake all" macro the home screen targets.
+    for (final pc in _config.pcs) {
+      map[ActionIds.wol(pc.id)] =
+          WolAction(id: ActionIds.wol(pc.id), mac: pc.mac, name: pc.name);
+    }
+    map[ActionIds.wolAll] = MacroAction(
+      id: ActionIds.wolAll,
+      confirm: false,
+      steps: [
+        for (final pc in _config.pcs)
+          MacroStep(ActionIds.wol(pc.id), delayAfterMs: 150),
+      ],
+    );
     _actionMap = map;
   }
 
@@ -179,6 +196,8 @@ class AppState extends ChangeNotifier {
   Future<bool> saveConfig(AppConfig newConfig) async {
     _config = newConfig;
     _relayClosed.clear();
+    // PC list lives in config, so regenerate the WoL actions/macro.
+    _rebuildActionMap();
     notifyListeners();
     _rel8Subscription.restart();
     final ok = await _repo.save(newConfig);

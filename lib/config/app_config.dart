@@ -1,3 +1,5 @@
+import '../models/wol_pc.dart';
+
 /// Connection parameters for a single CE device.
 class CeConnection {
   const CeConnection({
@@ -21,12 +23,16 @@ class AppConfig {
     this.rel8Port = 44197,
     this.tcpTimeoutMs = 2000,
     this.buttonLockMs = 1000,
+    this.pcs = const [],
   });
 
   final String irs4Ip;
   final int irs4Port;
   final String rel8Ip;
   final int rel8Port;
+
+  /// Wake-on-LAN target PCs, managed in settings.
+  final List<WolPc> pcs;
 
   /// TCP connect/IO timeout in milliseconds.
   final int tcpTimeoutMs;
@@ -49,6 +55,7 @@ class AppConfig {
     int? rel8Port,
     int? tcpTimeoutMs,
     int? buttonLockMs,
+    List<WolPc>? pcs,
   }) {
     return AppConfig(
       irs4Ip: irs4Ip ?? this.irs4Ip,
@@ -57,6 +64,7 @@ class AppConfig {
       rel8Port: rel8Port ?? this.rel8Port,
       tcpTimeoutMs: tcpTimeoutMs ?? this.tcpTimeoutMs,
       buttonLockMs: buttonLockMs ?? this.buttonLockMs,
+      pcs: pcs ?? this.pcs,
     );
   }
 
@@ -67,10 +75,12 @@ class AppConfig {
         'ce_rel8_port': rel8Port,
         'tcp_timeout_ms': tcpTimeoutMs,
         'button_lock_ms': buttonLockMs,
+        'wol_pcs': [for (final p in pcs) p.toJson()],
       };
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {
     const defaults = AppConfig();
+    final rawPcs = json['wol_pcs'] as List<dynamic>? ?? const [];
     return AppConfig(
       irs4Ip: json['ce_irs4_ip'] as String? ?? defaults.irs4Ip,
       irs4Port: json['ce_irs4_port'] as int? ?? defaults.irs4Port,
@@ -78,6 +88,9 @@ class AppConfig {
       rel8Port: json['ce_rel8_port'] as int? ?? defaults.rel8Port,
       tcpTimeoutMs: json['tcp_timeout_ms'] as int? ?? defaults.tcpTimeoutMs,
       buttonLockMs: json['button_lock_ms'] as int? ?? defaults.buttonLockMs,
+      pcs: [
+        for (final p in rawPcs) WolPc.fromJson(p as Map<String, dynamic>),
+      ],
     );
   }
 }

@@ -80,6 +80,20 @@ class RelayAction extends ActionDef {
   Duration get duration => Duration(milliseconds: durationMs);
 }
 
+/// A Wake-on-LAN magic packet sent to a PC's MAC address.
+class WolAction extends ActionDef {
+  const WolAction({
+    required super.id,
+    required this.mac,
+    required this.name,
+    super.confirm = false,
+    super.confirmMessage,
+  });
+
+  final String mac;
+  final String name;
+}
+
 /// One step of a macro: run [actionId], then wait [delayAfterMs].
 class MacroStep {
   const MacroStep(this.actionId, {this.delayAfterMs = 0});

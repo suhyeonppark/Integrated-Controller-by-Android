@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../actions/action_ids.dart';
+import '../app_state.dart';
 import '../models/button_config.dart';
 import '../widgets/control_button.dart';
 import '../widgets/grouped_buttons_view.dart';
@@ -15,12 +16,13 @@ class PowerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const GroupedButtonsView(
+    final pcs = AppScope.of(context).config.pcs;
+    return GroupedButtonsView(
       screen: ButtonScreen.power,
       header: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SectionCard(
+          const SectionCard(
             title: '전원 전체',
             child: ButtonGrid(
               tileWidth: kTileWidth,
@@ -39,6 +41,22 @@ class PowerScreen extends StatelessWidget {
               ],
             ),
           ),
+          // Per-PC Wake-on-LAN. Only shown once PCs are added in settings.
+          if (pcs.isNotEmpty)
+            SectionCard(
+              title: 'PC (Wake-on-LAN)',
+              child: ButtonGrid(
+                tileWidth: kTileWidth,
+                children: [
+                  for (final pc in pcs)
+                    ControlButton(
+                      label: pc.name.isEmpty ? 'PC' : pc.name,
+                      actionId: ActionIds.wol(pc.id),
+                      icon: Icons.computer,
+                    ),
+                ],
+              ),
+            ),
         ],
       ),
     );

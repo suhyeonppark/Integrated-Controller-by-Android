@@ -29,4 +29,9 @@ class ActionIds {
   static const String seq1Off = 'seq1_off';
   static const String seq2On = 'seq2_on';
   static const String seq2Off = 'seq2_off';
+
+  // Wake-on-LAN. `wolAll` wakes every configured PC; `wol(pcId)` targets one.
+  // These are generated from the PC list in settings, not the button set.
+  static const String wolAll = 'wol_all';
+  static String wol(String pcId) => 'wol_$pcId';
 }
